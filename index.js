@@ -2,6 +2,7 @@ require('dotenv').config()
 const {MongoClient} = require('mongodb')
 const {createBot} = require('./bot')
 const {UsersDAO} = require('./users-dao')
+const {FUELS} = require('./const')
 
 ;(async () => {
   // setup mongo client
@@ -20,6 +21,13 @@ const {UsersDAO} = require('./users-dao')
 
   // launch bot
   bot.launch()
+
+  // change stream
+  // const pipeline = [{$match: {'fuels.ds.inStock': true}}]
+  // const changeStream = db.collection('stations').watch(pipeline)
+  // changeStream.on('change', (next) => {
+  //   console.dir(next)
+  // })
 
   // shut down gracefully
   process.once('SIGINT', () => {

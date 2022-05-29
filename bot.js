@@ -1,36 +1,35 @@
 const _ = require('lodash')
 const {Telegraf} = require('telegraf')
+const {FUELS, FUEL_NAMES} = require('./const')
 
-// commands: start, fuels, subscribe, unsubscribe
+// commands: start, fuels, means, location, subscribe, unsubscribe
 const createBot = ({usersDAO}) => {
   const bot = new Telegraf(process.env.BOT_TOKEN)
+  const requestLocation = (ctx) => {
+    return bot.telegram.sendMessage(
+      ctx.chat.id,
+      'Share your location by clicking',
+      {
+        reply_markup: {
+          one_time_keyboard: true,
+          keyboard: [
+            [{text: 'Share Location', request_location: true}]
+          ]
+        }
+      })
+  }
   
   bot.start(async (ctx) => {
     await ctx.reply('Welcome to Fuel Master\n' +
       '/fuels - to choose fuels you want to watch\n' +
+      '/means - to select yout purchase means\n' +
+      '/location - to update your location\n' +
       '/unsubscribe - to unsubscribe from notifications\n' +
       '/subscribe - to subscribe back\n')
-    const user = {tgId: ctx.from.id}
+    const user = {}
     await usersDAO.upsertOne(user, {...user, subscribed: true}) 
+    await requestLocation(ctx)
   })
-
-  // constants
-  const FUELS = {
-    ds: 'ds',
-    dsp: 'dsp',
-    a92: 'a92',
-    a95: 'a95',
-    a95p: 'a95p',
-    gs: 'gs'
-  }
-  const FUEL_NAMES = {
-    [FUELS.ds]: 'Diesel',
-    [FUELS.dsp]: 'Diesel Premium',
-    [FUELS.a92]: 'A92',
-    [FUELS.a95]: 'A95',
-    [FUELS.a95p]: 'A95 Premium',
-    [FUELS.gs]: 'Gas',
-  }
 
   // commands
   bot.command('fuels', async (ctx) => {
@@ -60,6 +59,10 @@ const createBot = ({usersDAO}) => {
       })
   })
 
+  bot.command('location', async (ctx) => {
+    await requestLocation(ctx)
+  })
+
   bot.command('subscribe', async (ctx) => {
     await usersDAO.updateOne({tgId: ctx.from.id}, {subscribed: true}) 
     await bot.telegram.sendMessage(ctx.chat.id, 'Successfully subscribed')
@@ -81,6 +84,13 @@ const createBot = ({usersDAO}) => {
   bot.action('clear_fuels', async (ctx) => {
     await usersDAO.updateOne({tgId: ctx.from.id}, {fuels: []}) 
     await ctx.reply('Your preferences have been cleared')
+  })
+
+  bot.on('message', async (ctx) => {
+    const location = ctx.message.location
+    if (location) {
+      await usersDAO.updateOne({tgId: ctx.from.id}, {location})
+    }
   })
 
   return bot
