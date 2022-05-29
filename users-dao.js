@@ -21,6 +21,12 @@ class UsersDAO {
     
     return this._coll.updateOne(filter, update)
   }
+
+  addMean(filter, mean) {
+    const update = {$addToSet: {means: mean}}
+    
+    return this._coll.updateOne(filter, update)
+  }
 }
 
 module.exports = {

@@ -15,8 +15,26 @@ const FUEL_NAMES = {
   [FUELS.gs]: 'Gas',
 }
 
+const MEANS = {
+  cash: 'cash',
+  brand_wallet: 'brand_wallet',
+  coupon: 'coupon',
+  fuel_card: 'fuel_card',
+  special_transport: 'special_transport'
+}
+
+const MEAN_NAMES = {
+  [MEANS.cash]: 'Cash & Card',
+  [MEANS.brand_wallet]: 'Brand Wallet',
+  [MEANS.coupon]: 'Coupons',
+  [MEANS.fuel_card]: 'Fuel Card',
+  [MEANS.special_transport]: 'Special Transport'
+}
+
 module.exports = {
   FUELS,
-  FUEL_NAMES
+  FUEL_NAMES,
+  MEANS,
+  MEAN_NAMES
 }
 
