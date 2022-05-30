@@ -31,10 +31,20 @@ const MEAN_NAMES = {
   [MEANS.special_transport]: 'Special Transport'
 }
 
+const BRANDS = {
+  wog: 'wog'
+}
+
+const BRAND_NAMES = {
+  [BRANDS.wog]: 'WOG'
+}
+
 module.exports = {
   FUELS,
   FUEL_NAMES,
   MEANS,
-  MEAN_NAMES
+  MEAN_NAMES,
+  BRANDS,
+  BRAND_NAMES
 }
 
