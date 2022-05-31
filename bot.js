@@ -58,11 +58,12 @@ const createBot = ({usersDAO, db}) => {
       '/fuels - вибір пального\n' +
       // '/means - вибір способів для купівлі/отримання пального\n' +
       '/location - оновити свою локацію\n' +
-      '/search - знайти паливо доступне на данний момент' +
+      '/search - знайти паливо доступне на данний момент\n' +
+      '/distance - встановити радіус пошуку\n' +
       '/unsubscribe - скасувати підписку на повідомлення\n' +
       '/subscribe - підписатися на повідомлення\n')
     const user = {tgId: ctx.from.id}
-    await usersDAO.upsertOne(user, {...user, subscribed: true}) 
+    await usersDAO.upsertOne(user, {...user, maxDistance: 100000, subscribed: true}) 
     // await requestLocation(ctx)
   })
 
@@ -135,7 +136,7 @@ const createBot = ({usersDAO, db}) => {
           $geoNear: {
             near: user.location,
             distanceField: 'distance',
-            maxDistance: 100000, // FIXME: hardcode
+            maxDistance: user.maxDistance,
             spherical: true,
             query
           }
@@ -166,6 +167,23 @@ const createBot = ({usersDAO, db}) => {
     }
   })
 
+  bot.command('distance', async (ctx) => {
+    await bot.telegram.sendMessage(
+      ctx.chat.id,
+      'Оберіть радіус пошуку',
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {text: '20 км', callback_data: '20km'},
+              {text: '50 км', callback_data: '50km'},
+              {text: '100 км', callback_data: '100km'}
+            ]
+          ] 
+        }
+      })
+  })
+
   // actions 
   _.each(FUELS, (fuel) => {
     bot.action(fuel, async (ctx) => {
@@ -190,6 +208,19 @@ const createBot = ({usersDAO, db}) => {
   //   await usersDAO.updateOne({tgId: ctx.from.id}, {means: []}) 
   //   await ctx.reply('Усі способи купівлі/отримання видалені')
   // })
+  
+  bot.action('20km', async (ctx) => {
+    await usersDAO.updateOne({tgId: ctx.from.id}, {maxDistance: 20000}) 
+    await ctx.reply('Радіус пошуку тепер 20 км')
+  })
+  bot.action('50km', async (ctx) => {
+    await usersDAO.updateOne({tgId: ctx.from.id}, {maxDistance: 50000}) 
+    await ctx.reply('Радіус пошуку тепер 50 км')
+  })
+  bot.action('100km', async (ctx) => {
+    await usersDAO.updateOne({tgId: ctx.from.id}, {maxDistance: 100000}) 
+    await ctx.reply('Радіус пошуку тепер 100 км')
+  })
 
   bot.on('message', async (ctx) => {
     const location = ctx.message.location

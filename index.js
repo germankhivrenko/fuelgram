@@ -60,12 +60,17 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES, MEANS} = require('./const')
             $geoNear: {
               near: station.location,
               distanceField: 'distance',
-              maxDistance: 100000, // FIXME: hardcode
+              maxDistance: 100000,
               spherical: true,
               query: {
                 subscribed: true,
-                fuels: fuel,
+                fuels: fuel
               }
+            }
+          },
+          {
+            $match: {
+              $expr: {$lte: ['$distance', 'maxDistance']}
             }
           }
         ])
