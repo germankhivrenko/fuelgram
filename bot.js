@@ -125,7 +125,13 @@ const createBot = ({usersDAO}) => {
   bot.on('message', async (ctx) => {
     const location = ctx.message.location
     if (location) {
-      await usersDAO.updateOne({tgId: ctx.from.id}, {location})
+      const {longitude, latitude} = location
+      await usersDAO.updateOne({tgId: ctx.from.id}, {
+        location: {
+          type: 'Point',
+          coordinates: [longitude, latitude]
+        }
+      })
     }
   })
 
