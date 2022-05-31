@@ -3,6 +3,10 @@ class UsersDAO {
     this._coll = db.collection('users')
   }
 
+  findOne(filter) {
+    return this._coll.findOne(filter)
+  }
+
   upsertOne(filter, data) {
     const options = {upsert: true}
     const update = {$set: data}

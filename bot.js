@@ -1,9 +1,8 @@
 const _ = require('lodash')
 const {Telegraf} = require('telegraf')
-const {FUELS, FUEL_NAMES, MEANS, MEAN_NAMES} = require('./const')
+const {FUELS, FUEL_NAMES, MEANS, MEAN_NAMES, BRAND_NAMES} = require('./const')
 
-// commands: start, fuels, means, location, subscribe, unsubscribe
-const createBot = ({usersDAO}) => {
+const createBot = ({usersDAO, db}) => {
   const bot = new Telegraf(process.env.BOT_TOKEN)
   const requestLocation = (ctx) => {
     return bot.telegram.sendMessage(
@@ -18,29 +17,8 @@ const createBot = ({usersDAO}) => {
         }
       })
   }
-  
-  bot.start(async (ctx) => {
-    await ctx.reply('Ласкаво просимо!\n' +
-      'Я допоможу слідкувати на наявністю потрібного палива на АЗС навколо тебе (100 км).\n\n' +
-      'Для пошуку Вам потрібно:\n' +
-      '1) Обрати паливо, за яким ви полюєте\n' +
-      '2) Обрати способи для купівлі (чи отримання) пального (напр. готівка чи паливна карта, чи можливо ви водій спецтранспорту)\n' +
-      '3) Поділитися своєю локацією\n' +
-      '4) Бути підпісаним на повідомлення (Ви автоматично підписуєтесь при старті бота)\n\n' +
-      'Команди:\n' +
-      '/fuels - вибір пального\n' +
-      '/means - вибір способів для купівлі/отримання пального\n' +
-      '/location - оновити свою локацію\n' +
-      '/unsubscribe - скасувати підписку на повідомлення\n' +
-      '/subscribe - підписатися на повідомлення\n')
-    const user = {tgId: ctx.from.id}
-    await usersDAO.upsertOne(user, {...user, subscribed: true}) 
-    // await requestLocation(ctx)
-  })
-
-  // commands
-  bot.command('fuels', async (ctx) => {
-    await bot.telegram.sendMessage(
+  const requestFuels = (ctx) => {
+    return bot.telegram.sendMessage(
       ctx.chat.id,
       'Виберіть пальне для стежки',
       {
@@ -64,33 +42,60 @@ const createBot = ({usersDAO}) => {
           ] 
         }
       })
+  }
+  
+  bot.start(async (ctx) => {
+    await ctx.reply('Ласкаво просимо!\n' +
+      'Цей бот допоможе слідкувати на наявністю потрібного палива на АЗС навколо тебе (100 км).\n' +
+      'Шукай паливо доступне на данний момент, а також отримуй повідомлення щойно воно з\'явиться в наявності.\n\n' +
+      'Для цього Вам потрібно:\n' +
+      '1) Обрати паливо, за яким ви полюєте - /fuels\n' +
+      // '2) Обрати способи для купівлі (чи отримання) пального (напр. готівка чи паливна карта, чи можливо ви водій спецтранспорту)\n' +
+      '2) Поділитися своєю локацією - /location\n' +
+      '3) Шукайте доступне на даний момент паливо - /search\n' +
+      '3.1) Для отримання повідомлень Ви маєте бути підпісаним на них (Ви автоматично підписуєтесь при старті бота)\n\n' +
+      'Команди:\n' +
+      '/fuels - вибір пального\n' +
+      // '/means - вибір способів для купівлі/отримання пального\n' +
+      '/location - оновити свою локацію\n' +
+      '/search - знайти паливо доступне на данний момент' +
+      '/unsubscribe - скасувати підписку на повідомлення\n' +
+      '/subscribe - підписатися на повідомлення\n')
+    const user = {tgId: ctx.from.id}
+    await usersDAO.upsertOne(user, {...user, subscribed: true}) 
+    // await requestLocation(ctx)
   })
 
-  bot.command('means', async (ctx) => {
-    await bot.telegram.sendMessage(
-      ctx.chat.id,
-      'Оберіть доступні Вам способи купівлі/отримання пального',
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {text: MEAN_NAMES[MEANS.cash], callback_data: MEANS.cash},
-            ],
-            [
-              {text: MEAN_NAMES[MEANS.fuel_card], callback_data: MEANS.fuel_card},
-              {text: MEAN_NAMES[MEANS.brand_wallet], callback_data: MEANS.brand_wallet}
-            ],
-            [
-              {text: MEAN_NAMES[MEANS.coupon], callback_data: MEANS.coupon},
-              {text: MEAN_NAMES[MEANS.special_transport], callback_data: MEANS.special_transport}
-            ],
-            [
-              {text: 'Очистити', callback_data: 'clear_means'}
-            ]
-          ] 
-        }
-      })
+  // commands
+  bot.command('fuels', async (ctx) => {
+    await requestFuels(ctx)
   })
+
+  // bot.command('means', async (ctx) => {
+  //   await bot.telegram.sendMessage(
+  //     ctx.chat.id,
+  //     'Оберіть доступні Вам способи купівлі/отримання пального',
+  //     {
+  //       reply_markup: {
+  //         inline_keyboard: [
+  //           [
+  //             {text: MEAN_NAMES[MEANS.cash], callback_data: MEANS.cash},
+  //           ],
+  //           [
+  //             {text: MEAN_NAMES[MEANS.fuel_card], callback_data: MEANS.fuel_card},
+  //             {text: MEAN_NAMES[MEANS.brand_wallet], callback_data: MEANS.brand_wallet}
+  //           ],
+  //           [
+  //             {text: MEAN_NAMES[MEANS.coupon], callback_data: MEANS.coupon},
+  //             {text: MEAN_NAMES[MEANS.special_transport], callback_data: MEANS.special_transport}
+  //           ],
+  //           [
+  //             {text: 'Очистити', callback_data: 'clear_means'}
+  //           ]
+  //         ] 
+  //       }
+  //     })
+  // })
 
   bot.command('location', async (ctx) => {
     await requestLocation(ctx)
@@ -106,6 +111,61 @@ const createBot = ({usersDAO}) => {
     await bot.telegram.sendMessage(ctx.chat.id, 'Ви скасували підписку на повідомлення')
   })
 
+  bot.command('search', async (ctx) => {
+    const user = await usersDAO.findOne({tgId: ctx.from.id}) 
+    
+    if (_.isEmpty(user.fuels)) {
+      await ctx.reply(`Ви не маєте жодного обраного пального`)
+      await requestFuels(ctx)
+      return
+    }
+    if (_.isEmpty(user.location)) {
+      await ctx.reply('Для пошуку ви повинні поділитися своєю локацією')
+      await requestLocation(ctx)
+      return
+    }
+
+    const query = _.reduce(user.fuels, (acc, fuel) => {
+      acc.$or.push({[`fuels.${fuel}.means.cash`]: {$exists: true}})
+      return acc
+    }, {$or: []})
+    const stations = await db.collection('stations').aggregate(
+      [
+        {
+          $geoNear: {
+            near: user.location,
+            distanceField: 'distance',
+            maxDistance: 100000, // FIXME: hardcode
+            spherical: true,
+            query
+          }
+        }
+      ])
+
+    if (!(await stations.hasNext())) {
+      await bot.telegram.sendMessage(
+        user.tgId,
+        `Нічого не знайдено`)
+      return
+    }
+
+    for await (const station of stations) {
+      const {brand, address, distance, fetchedAt, location: {coordinates: [longitude, latitude]}} = station
+      const distanceKm = (station.distance / 1000).toFixed(1)
+      const desc = _.chain(station.fuels)
+        .pick(user.fuels)
+        .map('desc')
+        .map(_.trim)
+        .join('\n')
+        .value()
+      await bot.telegram.sendMessage(
+        user.tgId,
+        `${BRAND_NAMES[brand]}, ${address} (${distanceKm} км)\n\n` +
+        `${desc}\n(дані на ${fetchedAt.toLocaleTimeString()})`)
+      await bot.telegram.sendLocation(user.tgId, latitude, longitude)
+    }
+  })
+
   // actions 
   _.each(FUELS, (fuel) => {
     bot.action(fuel, async (ctx) => {
@@ -119,17 +179,17 @@ const createBot = ({usersDAO}) => {
     await ctx.reply('Усі види палива видалені з пошуку')
   })
 
-  _.each(MEANS, (mean) => {
-    bot.action(mean, async (ctx) => {
-      await usersDAO.addMean({tgId: ctx.from.id}, mean) 
-      await ctx.reply(`${MEAN_NAMES[mean]} додано як спосіб купівлі/отримання`)
-    })
-  })
+  // _.each(MEANS, (mean) => {
+  //   bot.action(mean, async (ctx) => {
+  //     await usersDAO.addMean({tgId: ctx.from.id}, mean) 
+  //     await ctx.reply(`${MEAN_NAMES[mean]} додано як спосіб купівлі/отримання`)
+  //   })
+  // })
 
-  bot.action('clear_means', async (ctx) => {
-    await usersDAO.updateOne({tgId: ctx.from.id}, {means: []}) 
-    await ctx.reply('Усі способи купівлі/отримання видалені')
-  })
+  // bot.action('clear_means', async (ctx) => {
+  //   await usersDAO.updateOne({tgId: ctx.from.id}, {means: []}) 
+  //   await ctx.reply('Усі способи купівлі/отримання видалені')
+  // })
 
   bot.on('message', async (ctx) => {
     const location = ctx.message.location

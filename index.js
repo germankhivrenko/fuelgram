@@ -3,7 +3,7 @@ const _ = require('lodash')
 const {MongoClient} = require('mongodb')
 const {createBot} = require('./bot')
 const {UsersDAO} = require('./users-dao')
-const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
+const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES, MEANS} = require('./const')
 
 ;(async () => {
   // setup mongo client
@@ -18,7 +18,7 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
   const usersDAO = new UsersDAO(db)
 
   // create bot
-  const bot = createBot({usersDAO})
+  const bot = createBot({usersDAO, db})
 
   // launch bot
   bot.launch()
@@ -26,16 +26,17 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
   // TODO: create index for location
   // create index
   await db.collection('users').createIndex({location: '2dsphere'})
+  await db.collection('stations').createIndex({location: '2dsphere'})
 
   // change stream
   const changeStream = db.collection('stations').watch()
   changeStream.on('change', async (change) => {
     const {updateDescription: {updatedFields}} = change
+    // FIXME: updatedFields can be both {'prop.name': value} and {prop: {name: value}}
     const updatedFuels = _.chain(FUELS)
       .map((fuel) => {
-        const path = `fuels.${fuel}.inStock` 
-        // FIXME: updatedFields can be both {'prop.name': value} and {prop: {name: value}}
-        return _.has(updatedFields, path) ? {fuel, inStock: _.get(updatedFields, path)} : null
+        const shouldNotify = _.chain(updatedFields).get(`fuels.${fuel}.means`).has(MEANS.CASH).value()
+        return shouldNotify ? {fuel, inStock: _.get(updatedFields, `fuels.${fuel}.inStock`)} : null
       })
       .compact()
       .value()
@@ -50,7 +51,7 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
         return
       }
 
-      console.log(`${new Date()}: Station ${station._id} updated fuel ${FUEL_NAMES[fuel]} state`)
+      console.log(`${new Date().toISOString()}: Station ${station._id} updated fuel ${FUEL_NAMES[fuel]} state`)
       const means = _.chain(station).get(`fuels.${fuel}.means`).keys().value()
 
       const usersCursor = await db.collection('users').aggregate(
@@ -64,7 +65,6 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
               query: {
                 subscribed: true,
                 fuels: fuel,
-                means: {$in: means}
               }
             }
           }
