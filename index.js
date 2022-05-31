@@ -23,6 +23,10 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
   // launch bot
   bot.launch()
 
+  // TODO: create index for location
+  // create index
+  await db.collection('users').createIndex({location: '2dsphere'})
+
   // change stream
   const changeStream = db.collection('stations').watch()
   changeStream.on('change', async (change) => {
@@ -30,25 +34,53 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
     const updatedFuels = _.chain(FUELS)
       .map((fuel) => {
         const path = `fuels.${fuel}.inStock` 
-        return _.has(updatedFields, path) ? {fuel, inStock: updatedFields[path]} : null
+        // FIXME: updatedFields can be both {'prop.name': value} and {prop: {name: value}}
+        return _.has(updatedFields, path) ? {fuel, inStock: _.get(updatedFields, path)} : null
       })
       .compact()
       .value()
 
+    if (_.isEmpty(updatedFuels)) {
+      return
+    }
+
+    const station = await db.collection('stations').findOne({_id: change.documentKey._id})
     await Promise.all(_.map(updatedFuels, async ({fuel, inStock}) => {
-      const station = await db.collection('stations').findOne({_id: change.documentKey._id})
+      if (!inStock) {
+        return
+      }
+
+      console.log(`${new Date()}: Station ${station._id} updated fuel ${FUEL_NAMES[fuel]} state`)
       const means = _.chain(station).get(`fuels.${fuel}.means`).keys().value()
-      const usersCursor = await db.collection('users').find({
-        fuels: fuel,
-        means: {$in: means}
-      })
+
+      const usersCursor = await db.collection('users').aggregate(
+        [
+          {
+            $geoNear: {
+              near: station.location,
+              distanceField: 'distance',
+              maxDistance: 100000, // FIXME: hardcode
+              spherical: true,
+              query: {
+                subscribed: true,
+                fuels: fuel,
+                means: {$in: means}
+              }
+            }
+          }
+        ])
 
       for await (const user of usersCursor) {
-        const {brand, address, fetchedAt, location: {latitude, longitude}} = station
+        console.log(`Notificating user ${user._id}`)
+        const {brand, address, fetchedAt, location: {coordinates: [longitude, latitude]}} = station
+        const description = _.get(station, `fuels.${fuel}.desc`)
+        const distanceKm = (user.distance / 1000).toFixed(1)
+
         await bot.telegram.sendMessage(
           user.tgId,
-          `${FUEL_NAMES[fuel]} ${inStock ? 'appeared' : 'is out'} at ${BRAND_NAMES[brand]},\n` +
-          `${address} (updated at ${fetchedAt.toLocaleTimeString()})\n`)
+          `Паливо "${FUEL_NAMES[fuel]}" ${inStock ? 'з\'явилось' : 'закінчилось'} на ${BRAND_NAMES[brand]},\n` +
+          `${address} (${distanceKm} км),\n\n` +
+          `${description} (дані на ${fetchedAt.toLocaleTimeString()})`)
         await bot.telegram.sendLocation(user.tgId, latitude, longitude)
       }
     }))

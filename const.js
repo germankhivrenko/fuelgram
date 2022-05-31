@@ -7,12 +7,12 @@ const FUELS = {
   gs: 'gs'
 }
 const FUEL_NAMES = {
-  [FUELS.ds]: 'Diesel',
-  [FUELS.dsp]: 'Diesel Premium',
+  [FUELS.ds]: 'Дизель',
+  [FUELS.dsp]: 'Дизель Преміум',
   [FUELS.a92]: 'A92',
   [FUELS.a95]: 'A95',
-  [FUELS.a95p]: 'A95 Premium',
-  [FUELS.gs]: 'Gas',
+  [FUELS.a95p]: 'A95 Преміум',
+  [FUELS.gs]: 'Газ',
 }
 
 const MEANS = {
@@ -24,11 +24,11 @@ const MEANS = {
 }
 
 const MEAN_NAMES = {
-  [MEANS.cash]: 'Cash & Card',
-  [MEANS.brand_wallet]: 'Brand Wallet',
-  [MEANS.coupon]: 'Coupons',
-  [MEANS.fuel_card]: 'Fuel Card',
-  [MEANS.special_transport]: 'Special Transport'
+  [MEANS.cash]: 'Банк. карта/готівка',
+  [MEANS.brand_wallet]: 'Гаманець АЗС',
+  [MEANS.coupon]: 'Паливні талони',
+  [MEANS.fuel_card]: 'Паливна карта',
+  [MEANS.special_transport]: 'Спецтранспорт'
 }
 
 const BRANDS = {
