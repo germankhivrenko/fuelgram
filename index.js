@@ -56,10 +56,12 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES} = require('./const')
 
   // shut down gracefully
   process.once('SIGINT', () => {
+    changeStream.close()
     bot.stop('SIGINT')
     client.close(() => console.log('Successfully closed'))
   })
   process.once('SIGTERM', () => {
+    changeStream.close()
     bot.stop('SIGTERM')
     client.close(() => console.log('Successfully closed'))
   })
