@@ -238,6 +238,14 @@ const createBot = ({usersDAO, db}) => {
   return bot
 }
 
+// notifyUser()
+// await bot.telegram.sendMessage(
+//   user.tgId,
+//   `Паливо "${FUEL_NAMES[fuel]}" ${inStock ? 'з\'явилось' : 'закінчилось'} на ${BRAND_NAMES[brand]},\n` +
+//   `${address} (${distanceKm} км),\n\n` +
+//   `${description} (дані на ${fetchedAt.toLocaleTimeString()})`)
+// await bot.telegram.sendLocation(user.tgId, latitude, longitude)
+
 module.exports = {
   createBot
 }

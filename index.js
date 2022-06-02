@@ -3,7 +3,9 @@ const _ = require('lodash')
 const {MongoClient} = require('mongodb')
 const {createBot} = require('./bot')
 const {UsersDAO} = require('./users-dao')
+const {StationsDAO} = require('./stations-dao')
 const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES, MEANS} = require('./const')
+const {Controller} = require('./controller')
 
 ;(async () => {
   // setup mongo client
@@ -14,8 +16,17 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES, MEANS} = require('./const')
   console.log('Successfully connected')
   const db = client.db(process.env.MONGO_DB)
 
-  // create users dao
+  // init services
+  const stationsDAO = new StationsDAO(db)
   const usersDAO = new UsersDAO(db)
+  const notifier = {
+    notifyUser: async (user, msg, location) => {
+      const {latitude, longitude} = location
+      await bot.telegram.sendMessage(user.tgId, msg)
+      await bot.telegram.sendLocation(user.tgId, latitude, longitude)
+    }
+  }
+  const controller = new Controller(stationsDAO, usersDAO, notifier)
 
   // create bot
   const bot = createBot({usersDAO, db})
@@ -30,65 +41,14 @@ const {FUELS, FUEL_NAMES, BRANDS, BRAND_NAMES, MEANS} = require('./const')
 
   // change stream
   const changeStream = db.collection('stations').watch()
+  // stationsDAO.watch()
   changeStream.on('change', async (change) => {
-    const {updateDescription: {updatedFields}} = change
-    // FIXME: updatedFields can be both {'prop.name': value} and {prop: {name: value}}
-    const updatedFuels = _.chain(FUELS)
-      .map((fuel) => {
-        const shouldNotify = _.chain(updatedFields).get(`fuels.${fuel}.means`).has(MEANS.CASH).value()
-        return shouldNotify ? {fuel, inStock: _.get(updatedFields, `fuels.${fuel}.inStock`)} : null
-      })
-      .compact()
-      .value()
-
-    if (_.isEmpty(updatedFuels)) {
-      return
-    }
-
-    const station = await db.collection('stations').findOne({_id: change.documentKey._id})
-    await Promise.all(_.map(updatedFuels, async ({fuel, inStock}) => {
-      if (!inStock) {
-        return
-      }
-
-      console.log(`${new Date().toISOString()}: Station ${station._id} updated fuel ${FUEL_NAMES[fuel]} state`)
-      const means = _.chain(station).get(`fuels.${fuel}.means`).keys().value()
-
-      const usersCursor = await db.collection('users').aggregate(
-        [
-          {
-            $geoNear: {
-              near: station.location,
-              distanceField: 'distance',
-              maxDistance: 100000,
-              spherical: true,
-              query: {
-                subscribed: true,
-                fuels: fuel
-              }
-            }
-          },
-          {
-            $match: {
-              $expr: {$lte: ['$distance', 'maxDistance']}
-            }
-          }
-        ])
-
-      for await (const user of usersCursor) {
-        console.log(`Notificating user ${user._id}`)
-        const {brand, address, fetchedAt, location: {coordinates: [longitude, latitude]}} = station
-        const description = _.get(station, `fuels.${fuel}.desc`)
-        const distanceKm = (user.distance / 1000).toFixed(1)
-
-        await bot.telegram.sendMessage(
-          user.tgId,
-          `Паливо "${FUEL_NAMES[fuel]}" ${inStock ? 'з\'явилось' : 'закінчилось'} на ${BRAND_NAMES[brand]},\n` +
-          `${address} (${distanceKm} км),\n\n` +
-          `${description} (дані на ${fetchedAt.toLocaleTimeString()})`)
-        await bot.telegram.sendLocation(user.tgId, latitude, longitude)
-      }
-    }))
+    const stationUpdatePath = {
+      insert: 'fullDocument',
+      update: 'updateDescription.updatedFields'
+    }[change.operationType]
+    const stationUpdate = _.get(change, stationUpdatePath)
+    await controller.handleStationChange(change.documentKey._id, stationUpdate)
   })
 
   // shut down gracefully
