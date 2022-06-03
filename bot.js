@@ -46,7 +46,7 @@ const createBot = ({usersDAO, db}) => {
   
   bot.start(async (ctx) => {
     await ctx.reply('Ласкаво просимо!\n' +
-      'Цей бот допоможе слідкувати на наявністю потрібного палива на АЗС навколо тебе (100 км).\n' +
+      'Цей бот допоможе слідкувати на наявністю потрібного палива на АЗС навколо тебе.\n' +
       'Шукай паливо доступне на данний момент, а також отримуй повідомлення щойно воно з\'явиться в наявності.\n\n' +
       'Для цього Вам потрібно:\n' +
       '1) Обрати паливо, за яким ви полюєте - /fuels\n' +
@@ -130,6 +130,7 @@ const createBot = ({usersDAO, db}) => {
       acc.$or.push({[`fuels.${fuel}.means.cash`]: {$exists: true}})
       return acc
     }, {$or: []})
+    // TODO: sort by distance
     const stations = await db.collection('stations').aggregate(
       [
         {
@@ -151,18 +152,12 @@ const createBot = ({usersDAO, db}) => {
     }
 
     for await (const station of stations) {
-      const {brand, address, distance, fetchedAt, location: {coordinates: [longitude, latitude]}} = station
+      const {desc, brand, address, distance, fetchedAt, location: {coordinates: [longitude, latitude]}} = station
       const distanceKm = (station.distance / 1000).toFixed(1)
-      const desc = _.chain(station.fuels)
-        .pick(user.fuels)
-        .map('desc')
-        .map(_.trim)
-        .join('\n')
-        .value()
       await bot.telegram.sendMessage(
         user.tgId,
         `${BRAND_NAMES[brand]}, ${address} (${distanceKm} км)\n\n` +
-        `${desc}\n(дані на ${fetchedAt.toLocaleTimeString()})`)
+        `${desc}\n\n` + `P.S. дані на ${fetchedAt.toLocaleTimeString()})`)
       await bot.telegram.sendLocation(user.tgId, latitude, longitude)
     }
   })

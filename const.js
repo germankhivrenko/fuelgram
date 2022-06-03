@@ -32,11 +32,13 @@ const MEAN_NAMES = {
 }
 
 const BRANDS = {
-  wog: 'wog'
+  wog: 'wog',
+  okko: 'okko'
 }
 
 const BRAND_NAMES = {
-  [BRANDS.wog]: 'WOG'
+  [BRANDS.wog]: 'WOG',
+  [BRANDS.okko]: 'OKKO'
 }
 
 module.exports = {
