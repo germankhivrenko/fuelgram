@@ -36,7 +36,7 @@ class Controller {
           `P.S. дані на ${fetchedAt.toLocaleTimeString()}` // FIXME: container timezone
         const {coordinates: [longitude, latitude]} = location
 
-        console.log(`Notificating user ${user.id} about ${fuel} at ${stationId}`)
+        console.log(`Notificating user ${user._id} about ${fuel} at ${brand} ${stationId}`)
         await this._notifier.notifyUser(user, msg, {longitude, latitude})
       }      
     }))

@@ -9,9 +9,7 @@ const {Controller} = require('./controller')
 
 ;(async () => {
   // setup mongo client
-  const mongoURL = `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}`
-    + `@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}`
-  const client = new MongoClient(mongoURL)
+  const client = new MongoClient(process.env.MONGO_URL)
   await client.connect()
   console.log('Successfully connected')
   const db = client.db(process.env.MONGO_DB)
@@ -35,9 +33,8 @@ const {Controller} = require('./controller')
   bot.launch()
 
   // TODO: create index for location
-  // create index
-  await db.collection('users').createIndex({location: '2dsphere'})
-  await db.collection('stations').createIndex({location: '2dsphere'})
+  // await db.collection('users').createIndex({location: '2dsphere'})
+  // await db.collection('stations').createIndex({location: '2dsphere'})
 
   // change stream
   const changeStream = db.collection('stations').watch()
