@@ -2,6 +2,13 @@ const _ = require('lodash')
 const {Telegraf} = require('telegraf')
 const {FUELS, FUEL_NAMES, MEANS, MEAN_NAMES, BRAND_NAMES} = require('./const')
 
+const formatSettingsMsg = (user) => {
+  const {fuels, maxDistance, location} = user
+  const fuelsStr = _.chain(fuels).map((fuel) => FUEL_NAMES[fuel]).join(', ').value()
+  const locationStr = location ? '' : ' (Залишилось поділитись локацією - /location)'
+  return `Ви отримуватимите сповіщення про появу: ${fuelsStr} в радіусі ${maxDistance/1000} км${locationStr}`
+}
+
 const createBot = ({usersDAO, db}) => {
   const bot = new Telegraf(process.env.BOT_TOKEN)
   const requestLocation = (ctx) => {
@@ -55,7 +62,7 @@ const createBot = ({usersDAO, db}) => {
       '3) Шукайте доступне на даний момент паливо - /search\n' +
       '3.1) Для отримання повідомлень Ви маєте бути підпісаним на них (Ви автоматично підписуєтесь при старті бота)\n' +
       '3.2) Оберіть бажаний радіус пошуку - /distance\n\n' +
-      'P.S. на даний момент ми слідкуємо на наступними АЗК: OKKO, WOG.\n\n' +
+      'P.S. на даний момент ми слідкуємо за наступними АЗК: OKKO, WOG.\n\n' +
       'P.P.S. Побажання, відгуки і т.д.: germankhivrenko@gmail.com')
       // 'Команди:\n' +
       // '/fuels - вибір пального\n' +
@@ -66,7 +73,9 @@ const createBot = ({usersDAO, db}) => {
       // '/unsubscribe - скасувати підписку на повідомлення\n' +
       // '/subscribe - підписатися на повідомлення\n')
     const user = {tgId: ctx.from.id}
-    await usersDAO.upsertOne(user, {...user, maxDistance: 100000, subscribed: true}) 
+    const foundUser = await usersDAO.findOne(user)
+    const maxDistance = _.get(foundUser, 'maxDistance') || 50000
+    await usersDAO.upsertOne(user, {...user, maxDistance, subscribed: true}) 
     // await requestLocation(ctx)
   })
 
@@ -160,7 +169,7 @@ const createBot = ({usersDAO, db}) => {
       await bot.telegram.sendMessage(
         user.tgId,
         `${BRAND_NAMES[brand]}, ${address} (${distanceKm} км)\n\n` +
-        `${desc}\n\n` + `P.S. дані на ${fetchedAt.toLocaleTimeString()})`)
+        `${desc}\n\n` + `P.S. дані на ${fetchedAt.toLocaleTimeString()}`)
       await bot.telegram.sendLocation(user.tgId, latitude, longitude)
     }
   })
@@ -186,7 +195,8 @@ const createBot = ({usersDAO, db}) => {
   _.each(FUELS, (fuel) => {
     bot.action(fuel, async (ctx) => {
       await usersDAO.addFuel({tgId: ctx.from.id}, fuel) 
-      await ctx.reply(`${FUEL_NAMES[fuel]} доданий до пошуку`)
+      const user = await usersDAO.findOne({tgId: ctx.from.id})
+      await ctx.reply(formatSettingsMsg(user))
     })
   })
   
@@ -209,15 +219,18 @@ const createBot = ({usersDAO, db}) => {
   
   bot.action('20km', async (ctx) => {
     await usersDAO.updateOne({tgId: ctx.from.id}, {maxDistance: 20000}) 
-    await ctx.reply('Радіус пошуку тепер 20 км')
+    const user = await usersDAO.findOne({tgId: ctx.from.id})
+    await ctx.reply(formatSettingsMsg(user))
   })
   bot.action('50km', async (ctx) => {
     await usersDAO.updateOne({tgId: ctx.from.id}, {maxDistance: 50000}) 
-    await ctx.reply('Радіус пошуку тепер 50 км')
+    const user = await usersDAO.findOne({tgId: ctx.from.id})
+    await ctx.reply(formatSettingsMsg(user))
   })
   bot.action('100km', async (ctx) => {
     await usersDAO.updateOne({tgId: ctx.from.id}, {maxDistance: 100000}) 
-    await ctx.reply('Радіус пошуку тепер 100 км')
+    const user = await usersDAO.findOne({tgId: ctx.from.id})
+    await ctx.reply(formatSettingsMsg(user))
   })
 
   bot.on('message', async (ctx) => {
@@ -235,14 +248,6 @@ const createBot = ({usersDAO, db}) => {
 
   return bot
 }
-
-// notifyUser()
-// await bot.telegram.sendMessage(
-//   user.tgId,
-//   `Паливо "${FUEL_NAMES[fuel]}" ${inStock ? 'з\'явилось' : 'закінчилось'} на ${BRAND_NAMES[brand]},\n` +
-//   `${address} (${distanceKm} км),\n\n` +
-//   `${description} (дані на ${fetchedAt.toLocaleTimeString()})`)
-// await bot.telegram.sendLocation(user.tgId, latitude, longitude)
 
 module.exports = {
   createBot

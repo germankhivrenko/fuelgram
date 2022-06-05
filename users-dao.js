@@ -40,13 +40,11 @@ class UsersDAO {
 
   updateOne(filter, data) {
     const update = {$set: data}
-    
     return this._db.collection('users').updateOne(filter, update)
   }
 
   addFuel(filter, fuel) {
     const update = {$addToSet: {fuels: fuel}}
-    
     return this._db.collection('users').updateOne(filter, update)
   }
 

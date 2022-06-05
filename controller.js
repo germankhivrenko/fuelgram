@@ -31,7 +31,8 @@ class Controller {
 
       for await (const user of users) {
         const distanceKm = (user.distance / 1000).toFixed(1)
-        const msg = `Паливо "${FUEL_NAMES[fuel]}" на ${BRAND_NAMES[brand]}, ` +
+        fetchedAt.setTime(fetchedAt.getTime() + 3 * 60 * 60 * 1000) // FIXME: timezone
+        const msg = `${FUEL_NAMES[fuel]} на ${BRAND_NAMES[brand]}, ` +
           `${address} (${distanceKm} км).\n\n${desc}\n\n` +
           `P.S. дані на ${fetchedAt.toLocaleTimeString()}` // FIXME: container timezone
         const {coordinates: [longitude, latitude]} = location
