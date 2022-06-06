@@ -19,9 +19,13 @@ const {Controller} = require('./controller')
   const usersDAO = new UsersDAO(db)
   const notifier = {
     notifyUser: async (user, msg, location) => {
-      const {latitude, longitude} = location
-      await bot.telegram.sendMessage(user.tgId, msg)
-      await bot.telegram.sendLocation(user.tgId, latitude, longitude)
+      try {
+        const {latitude, longitude} = location
+        await bot.telegram.sendMessage(user.tgId, msg)
+        await bot.telegram.sendLocation(user.tgId, latitude, longitude)
+      } catch(err) {
+        console.error(err)
+      }
     }
   }
   const controller = new Controller(stationsDAO, usersDAO, notifier)

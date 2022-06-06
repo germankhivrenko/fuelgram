@@ -3,6 +3,7 @@ const {Telegraf} = require('telegraf')
 const {FUELS, FUEL_NAMES, MEANS, MEAN_NAMES, BRAND_NAMES} = require('./const')
 
 const formatSettingsMsg = (user) => {
+  if (!user) return 'restart bot - /start'
   const {fuels, maxDistance, location} = user
   const fuelsStr = _.chain(fuels).map((fuel) => FUEL_NAMES[fuel]).join(', ').value()
   const locationStr = location ? '' : ' (Залишилось поділитись локацією - /location)'
@@ -166,11 +167,15 @@ const createBot = ({usersDAO, db}) => {
     for await (const station of stations) {
       const {desc, brand, address, distance, fetchedAt, location: {coordinates: [longitude, latitude]}} = station
       const distanceKm = (station.distance / 1000).toFixed(1)
-      await bot.telegram.sendMessage(
-        user.tgId,
-        `${BRAND_NAMES[brand]}, ${address} (${distanceKm} км)\n\n` +
-        `${desc}\n\n` + `P.S. дані на ${fetchedAt.toLocaleTimeString()}`)
-      await bot.telegram.sendLocation(user.tgId, latitude, longitude)
+      try {
+        await bot.telegram.sendMessage(
+          user.tgId,
+          `${BRAND_NAMES[brand]}, ${address} (${distanceKm} км)\n\n` +
+          `${desc}\n\n` + `P.S. дані на ${fetchedAt.toLocaleTimeString()}`)
+        await bot.telegram.sendLocation(user.tgId, latitude, longitude)
+      } catch(err) {
+        console.error(err)
+      }
     }
   })
 
